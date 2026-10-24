@@ -52,9 +52,11 @@ app.use((req, res, next) => {
   // checkout.razorpay.com). Every other page keeps the strict policy.
   const payPage = req.path === '/pay.html' || req.path === '/pay';
   res.setHeader('Content-Security-Policy',
-    `default-src 'self'; img-src 'self' data: https://*.razorpay.com; style-src 'self'${payPage ? " 'unsafe-inline'" : ''}; ` +
+    `default-src 'self'; img-src 'self' data: https://*.razorpay.com${payPage ? ' https://razorpay.com' : ''}; style-src 'self'${payPage ? " 'unsafe-inline'" : ''}; ` +
     `script-src 'self' https://checkout.razorpay.com${payPage ? " 'unsafe-eval'" : ''}; ` +
-    "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com; frame-src https://api.razorpay.com https://checkout.razorpay.com; base-uri 'none'; frame-ancestors 'none'");
+    `connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com${payPage ? ' https://razorpay.com https://*.razorpay.com' : ''}; ` +
+    // The payment button opens its window from razorpay.com/payment-button/..., so the pay page must allow that address.
+    `frame-src https://api.razorpay.com https://checkout.razorpay.com${payPage ? ' https://razorpay.com https://*.razorpay.com' : ''}; base-uri 'none'; frame-ancestors 'none'`);
   next();
 });
 
