@@ -6,3 +6,4 @@ eval/results/
 data/*.db
 data/*.db-*
 data/.dev-enc-key
+data/demo-accounts.txt

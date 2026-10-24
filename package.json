@@ -8,7 +8,8 @@
     "start": "node --env-file-if-exists=.env server.js",
     "dev": "node --watch --env-file-if-exists=.env server.js",
     "test": "node --test \"test/*.test.js\"",
-    "eval": "node --env-file-if-exists=.env eval/run.js"
+    "eval": "node --env-file-if-exists=.env eval/run.js",
+    "seed:demo": "node --env-file-if-exists=.env scripts/seed-demo.js"
   },
   "engines": { "node": ">=22.13" },
   "license": "MIT",
