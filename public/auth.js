@@ -18,6 +18,8 @@
   $('tabIn').addEventListener('click', () => { mode = 'in'; history.replaceState(null, '', '#'); render(); });
   $('tabUp').addEventListener('click', () => { mode = 'up'; history.replaceState(null, '', '#signup'); render(); });
   render();
+  // The header's "Sign up" link only changes the #hash when you are already on this page.
+  window.addEventListener('hashchange', () => { mode = location.hash === '#signup' ? 'up' : 'in'; render(); });
 
   fetch('/api/me').then(r => r.json()).then(d => { if (d.user) location.replace('/account.html'); }).catch(() => {});
 
