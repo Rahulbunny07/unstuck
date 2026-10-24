@@ -90,7 +90,7 @@ Site key: Anthropic, Groq or an AgenticOrg agent (first one configured wins). Us
 - `ENCRYPTION_KEY`: generate with `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` and keep a copy somewhere safe.
 - `GROQ_API_KEY`: your Groq key.
 
-The blueprint is set to Render's FREE plan, which has no persistent disk: the database resets when the service sleeps or redeploys. For real use switch to the starter plan and add the disk described at the top of render.yaml. Keep it at one instance. After the first deploy check `/api/health`, then submit a sample error from a phone.
+The blueprint uses a paid (starter) plan with a 1 GB persistent disk at `/var/data` so the SQLite database survives restarts and redeploys. Keep `DB_PATH=/var/data/unstuck.db` and `DB_PERSISTENT=1` together with the disk. Keep one instance and back the disk up. The service name stays `unstuck`, so the public address does not change.
 
 ## Before deploying
 
