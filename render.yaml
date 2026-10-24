@@ -1,28 +1,34 @@
 # Render blueprint: New > Blueprint > pick this repo. It asks for the two secrets marked sync: false.
-# This uses a paid instance because Render's free instances have no persistent disk and wipe local
-# files when they sleep. Our library, votes and accounts live in one SQLite file, so they need the disk.
-# Only ONE instance: the database file, daily limits and throttle each live inside one process.
+#
+# FREE PLAN, NO DISK: Render's free instances have no persistent disk and wipe local files when they
+# sleep (after 15 minutes without visitors) or redeploy. Our library, votes and accounts live in one
+# SQLite file, so on this plan they RESET. Fine for trying the app, not for counting real users.
+# For real use: set plan to starter and add the disk block below, mounted at /var/data, with
+# DB_PATH=/var/data/unstuck.db.
+#
+#   disk:
+#     name: unstuck-data
+#     mountPath: /var/data
+#     sizeGB: 1
+#
+# Keep ONE instance: the database file, daily limits and throttle each live inside one process.
 services:
   - type: web
     name: unstuck
     runtime: node
-    plan: starter
+    plan: free
     branch: master
     autoDeploy: true
     buildCommand: npm ci
     startCommand: npm start
     healthCheckPath: /api/health
-    disk:
-      name: unstuck-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: NODE_VERSION
-        value: 22
+        value: "22"
       - key: NODE_ENV
         value: production
       - key: DB_PATH
-        value: /var/data/unstuck.db
+        value: /tmp/unstuck.db
       - key: ENCRYPTION_KEY
         sync: false
       - key: GROQ_API_KEY
@@ -30,18 +36,18 @@ services:
       - key: GROQ_REASONING_EFFORT
         value: low
       - key: MATCH_THRESHOLD
-        value: 0.85
+        value: "0.85"
       - key: DAILY_AI_LIMIT_ANON
-        value: 4
+        value: "4"
       - key: DAILY_AI_LIMIT_USER
-        value: 10
+        value: "10"
       - key: DAILY_AI_LIMIT_IP
-        value: 150
+        value: "150"
       - key: GLOBAL_DAILY_AI_CALLS
-        value: 150
+        value: "150"
       - key: GLOBAL_DAILY_AI_TOKENS
-        value: 180000
+        value: "180000"
       - key: THROTTLE_TOKENS_PER_MIN
-        value: 6500
+        value: "6500"
       - key: THROTTLE_MAX_WAIT_SECONDS
-        value: 30
+        value: "30"

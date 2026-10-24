@@ -52,7 +52,7 @@ Site key: Anthropic, Groq or an AgenticOrg agent (first one configured wins). Us
 - `ENCRYPTION_KEY`: generate with `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` and keep a copy somewhere safe.
 - `GROQ_API_KEY`: your Groq key.
 
-Render's free instances have no persistent disk and wipe local files when they sleep, so the blueprint uses a paid instance. Keep it at one instance. After the first deploy check `/api/health`, then submit a sample error from a phone.
+The blueprint is set to Render's FREE plan, which has no persistent disk: the database resets when the service sleeps or redeploys. For real use switch to the starter plan and add the disk described at the top of render.yaml. Keep it at one instance. After the first deploy check `/api/health`, then submit a sample error from a phone.
 
 ## Before deploying
 
