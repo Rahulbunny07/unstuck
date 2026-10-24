@@ -138,7 +138,9 @@
     const list = $('packList');
     list.replaceChildren();
     if (!b.configured) {
-      list.append(h('p', { class: 'empty', text: 'Buying credits is not switched on yet.' }));
+      list.append(h('p', { class: 'empty', text: b.reason === 'storage'
+        ? 'Buying credits is paused until the site has permanent storage, so nobody pays and then loses their credits.'
+        : 'Buying credits is not switched on yet.' }));
     } else {
       b.packs.forEach(p => list.append(h('div', { class: 'pack' },
         h('b', { text: p.label }),
@@ -151,12 +153,52 @@
       h('span', { class: 'badge ' + (o.status === 'PAID' ? 'confirmed' : o.status === 'PENDING' || o.status === 'CREATED' ? 'unverified' : 'curated'), text: STATUS[o.status] || o.status }))));
   }
 
+  function say(text) { const b = $('payBanner'); b.textContent = text; b.hidden = !text; }
+
+  function loadRazorpay() {
+    return new Promise((resolve, reject) => {
+      if (window.Razorpay) return resolve();
+      const s = document.createElement('script');
+      s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Could not load the payment window. Check your connection or an ad blocker, then try again.'));
+      document.head.append(s);
+    });
+  }
+
+  // Razorpay's window runs on Razorpay's own page, so card and UPI details never reach this site.
+  async function openRazorpay(o, btn) {
+    await loadRazorpay();
+    const reset = () => { btn.disabled = false; btn.textContent = 'Buy'; };
+    const rzp = new window.Razorpay({
+      key: o.key, amount: o.amount, currency: o.currency, name: o.name, description: o.description,
+      order_id: o.order_id, prefill: o.prefill, theme: { color: '#4f46e5' },
+      handler: async resp => {
+        say('Confirming your payment...');
+        try {
+          const v = await api('/api/billing/razorpay/verify', 'POST', resp);
+          say(v.outcome === 'success' ? 'Payment received. Your credits are added.'
+            : v.outcome === 'failed' ? 'The payment did not go through. If money left your account, contact us.'
+              : 'Your payment is still being confirmed. This page will update when it is.');
+          renderBilling(await api('/api/billing/me'));
+        } catch (err) {
+          say('We could not confirm the payment yet. If money left your account it will be credited automatically, or reload this page in a minute.');
+          reset();
+        }
+      },
+      modal: { ondismiss: reset },
+    });
+    rzp.on('payment.failed', () => say('The payment did not go through, and nothing was charged. You can try again.'));
+    rzp.open();
+  }
+
   async function buy(packId, btn) {
     showErr('buyErr', '');
     btn.disabled = true; btn.textContent = 'Starting...';
     try {
-      const { url } = await api('/api/billing/checkout', 'POST', { packId });
-      location.href = url;
+      const r = await api('/api/billing/checkout', 'POST', { packId });
+      if (r.provider === 'razorpay') await openRazorpay(r, btn);
+      else location.href = r.url;
     } catch (err) { showErr('buyErr', err.message); btn.disabled = false; btn.textContent = 'Buy'; }
   }
 

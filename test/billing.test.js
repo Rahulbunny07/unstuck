@@ -15,6 +15,7 @@ process.env.PUBLIC_URL = 'https://unstuck.example';
 process.env.DAILY_AI_LIMIT_ANON = '1';
 process.env.DAILY_AI_LIMIT_USER = '1';
 process.env.THROTTLE_TOKENS_PER_MIN = '0';
+process.env.DB_PERSISTENT = '1'; // the pretend Pine Labs counts as "live" because its address is not a real test host
 
 const ANSWER = {
   title: 'Fix', cause: 'A cause.', evidence: [], fix_prompt: 'Do the one small thing. Change nothing else.',

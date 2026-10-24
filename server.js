@@ -12,6 +12,7 @@ const quota = require('./lib/quota');
 const throttle = require('./lib/throttle');
 const billing = require('./lib/billing');
 const pine = require('./lib/pine');
+const razorpay = require('./lib/razorpay');
 
 const PORT = Number(process.env.PORT) || 3000;
 const FAST_MODEL = process.env.FAST_MODEL || 'claude-haiku-5-5';
@@ -36,7 +37,8 @@ if (seeded) console.log(`Seeded library with ${seeded} curated fixes`);
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
-app.use(express.json({ limit: '60kb' }));
+// The Razorpay webhook is signed over the exact bytes it sends, so keep those bytes for that route.
+app.use(express.json({ limit: '200kb', verify: (req, res, buf) => { if (req.originalUrl.startsWith('/api/billing/razorpay/webhook')) req.rawBody = buf; } }));
 // Pine Labs sends the customer back to /api/billing/return from its own site, so that one route
 // is exempt from the same-origin check. It trusts nothing in the request (see below).
 app.use('/api', (req, res, next) => (req.path === '/billing/return' ? next() : auth.sameOrigin(req, res, next)), auth.attachUser);
@@ -46,7 +48,8 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'no-referrer');
   if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000');
   res.setHeader('Content-Security-Policy',
-    "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'");
+    "default-src 'self'; img-src 'self' data: https://*.razorpay.com; style-src 'self'; script-src 'self' https://checkout.razorpay.com; " +
+    "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com; frame-src https://api.razorpay.com https://checkout.razorpay.com; base-uri 'none'; frame-ancestors 'none'");
   next();
 });
 
@@ -227,7 +230,7 @@ app.post('/api/fix', fixPerIp, fixPerUser, async (req, res) => {
         else q = paid;
       }
       if (!q.ok) {
-        const extra = q.reason !== 'global' && pine.configured() ? ' You can also buy credits in Account.' : '';
+        const extra = q.reason !== 'global' && paymentState().ready ? ' You can also buy credits in Account.' : '';
         return res.status(429).json({ error: quota.MESSAGES[q.reason](q.limit) + extra, quotaBlocked: q.reason });
       }
       ticket = q.ticket;
@@ -452,18 +455,58 @@ app.get('/api/stats', limit(120), (req, res) => {
 // ---- Payments: Pine Labs hosted checkout, credits for AI answers ----
 const publicUrl = req => (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
 
+// Whether buying is switched on, and if not, why. Live (real money) keys are only allowed once the
+// owner confirms the database is on permanent storage (DB_PERSISTENT=1): on a disk that is wiped,
+// a customer could pay and then lose their credits.
+function paymentState() {
+  const provider = billing.activeProvider();
+  if (!provider) return { provider: null, ready: false, live: false, reason: 'not_configured' };
+  const live = provider === 'razorpay' ? !razorpay.isTestMode() : !pine.isTestMode();
+  if (live && process.env.DB_PERSISTENT !== '1') return { provider, ready: false, live, reason: 'storage' };
+  return { provider, ready: true, live, reason: null };
+}
+
 app.get('/api/billing/me', auth.requireUser, (req, res) => {
+  const s = paymentState();
   res.json({
-    configured: pine.configured(), testMode: pine.isTestMode(),
+    configured: s.ready, provider: s.provider, testMode: s.ready && !s.live, reason: s.reason,
     balance: billing.balance(req.user.id), packs: billing.PACKS, orders: billing.recentOrders(req.user.id),
   });
 });
 
-app.post('/api/billing/checkout', auth.requireUser, limit(10), async (req, res) => {
-  if (!pine.configured()) return res.status(503).json({ error: 'Payments are not set up yet.' });
+// Limits on signed-in actions count per person, not per network address, so people sharing one Wi-Fi do not block each other.
+const perUser = req => 'u:' + (req.user ? req.user.id : req.ip);
+
+app.post('/api/billing/checkout', auth.requireUser, limit(10, 60000, perUser), async (req, res) => {
+  const state = paymentState();
+  if (!state.ready) {
+    return res.status(503).json({ error: state.reason === 'storage'
+      ? 'Payments are paused until the site has permanent storage, so nobody pays and then loses their credits.'
+      : 'Payments are not set up yet.' });
+  }
   const pack = billing.PACKS.find(p => p.id === (req.body || {}).packId); // the price comes from here, not from the browser
   if (!pack) return res.status(400).json({ error: 'Pick a pack.' });
-  const order = billing.createOrder(req.user.id, pack);
+
+  if (state.provider === 'razorpay') {
+    const rzpOrder = billing.createOrder(req.user.id, pack, 'razorpay');
+    try {
+      const o = await razorpay.createOrder({
+        paise: pack.paise, receipt: rzpOrder.merchant_ref.slice(0, 40),
+        notes: { user_id: String(req.user.id), pack_id: pack.id },
+      });
+      billing.setPineOrder(rzpOrder.id, o.id);
+      return res.json({
+        provider: 'razorpay', key: razorpay.keyId(), order_id: o.id, amount: pack.paise, currency: 'INR',
+        name: 'Unstuck', description: pack.label, prefill: { email: req.user.email },
+      });
+    } catch (e) {
+      console.error('Razorpay order failed:', e.code, e.status || '', e.message);
+      billing.setStatus(rzpOrder.id, 'FAILED');
+      return res.status(502).json({ error: e.code === 'RZP_AUTH' ? 'Payments are misconfigured. Nothing was charged.' : 'Could not start the payment. Nothing was charged. Try again.' });
+    }
+  }
+
+  const order = billing.createOrder(req.user.id, pack, 'pine');
   try {
     const c = await pine.createCheckout({
       reference: order.merchant_ref, paise: pack.paise, email: req.user.email,
@@ -480,6 +523,40 @@ app.post('/api/billing/checkout', auth.requireUser, limit(10), async (req, res) 
   }
 });
 
+// Razorpay: the browser reports a finished payment. The signature is checked against OUR stored
+// order id, and then the payment itself is fetched from Razorpay and must be captured, for this
+// order, for exactly the amount we asked for. Only the order's own user can claim it.
+app.post('/api/billing/razorpay/verify', auth.requireUser, limit(20, 60000, perUser), async (req, res) => {
+  const b = req.body || {};
+  const orderId = String(b.razorpay_order_id || '').slice(0, 60);
+  const paymentId = String(b.razorpay_payment_id || '').slice(0, 60);
+  const order = orderId ? billing.findByProviderOrder('razorpay', orderId) : null;
+  if (!order || order.user_id !== req.user.id) return res.status(404).json({ error: 'We could not find that payment.' });
+  if (!razorpay.verifySignature(order.pine_order_id, paymentId, String(b.razorpay_signature || ''))) {
+    return res.status(400).json({ error: 'We could not verify that payment. If money left your account, contact us with the time and amount.' });
+  }
+  const outcome = await billing.settleRazorpayPayment(order, paymentId);
+  res.json({ outcome, balance: billing.balance(req.user.id) });
+});
+
+// Razorpay's own notification, so a payment is credited even if the customer closed the tab. The
+// body is signed with the webhook secret (set in Razorpay's dashboard). Even then the payload is
+// only used to find our order: the real status is fetched from Razorpay before crediting.
+app.post('/api/billing/razorpay/webhook', limit(300), async (req, res) => {
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+  if (!secret || !req.rawBody) return res.status(503).json({ error: 'Webhook not configured.' });
+  const expected = crypto.createHmac('sha256', secret).update(req.rawBody).digest('hex');
+  const got = String(req.get('x-razorpay-signature') || '');
+  const a = Buffer.from(expected);
+  const b = Buffer.from(got);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return res.status(400).json({ error: 'Bad signature.' });
+  const p = req.body && req.body.payload;
+  const orderId = (p && p.payment && p.payment.entity && p.payment.entity.order_id) || (p && p.order && p.order.entity && p.order.entity.id);
+  const order = orderId ? billing.findByProviderOrder('razorpay', String(orderId)) : null;
+  if (order) await billing.verifyAndSettle(order);
+  res.json({ ok: true });
+});
+
 // Pine Labs sends the customer back here. Whatever arrives in the request is only used to find
 // our own order. Whether it was paid is decided by asking Pine Labs directly, so a forged or
 // edited return link cannot add credits. It works without a sign-in cookie on purpose: the order
@@ -493,7 +570,7 @@ app.all('/api/billing/return', limit(60), express.urlencoded({ extended: false, 
 });
 
 // For someone who paid and closed the tab before being sent back: check their open orders.
-app.post('/api/billing/reconcile', auth.requireUser, limit(20), async (req, res) => {
+app.post('/api/billing/reconcile', auth.requireUser, limit(20, 60000, perUser), async (req, res) => {
   const results = [];
   for (const o of billing.openOrdersFor(req.user.id)) results.push(await billing.verifyAndSettle(o));
   res.json({ checked: results.length, credited: results.filter(r => r === 'success').length, balance: billing.balance(req.user.id) });

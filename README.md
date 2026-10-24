@@ -31,16 +31,21 @@ Without an AI key the app still answers errors that are in the library; new erro
 - A per-minute token throttle: extra requests wait in line (30 s cap), then get a retry time.
 - Defaults fit a free Groq key. Raise them for a paid key. All settings are in `.env.example`.
 
-## Payments (Pine Labs, test mode)
+## Payments (Razorpay, real money)
 
-Signed-in users can buy credits; one credit pays for one AI answer after the free daily allowance (`lib/billing.js`, `lib/pine.js`, routes under `/api/billing`).
+Signed-in users buy credits; one credit pays for one AI answer after the free daily allowance (`lib/billing.js`, `lib/razorpay.js`, routes under `/api/billing`). Razorpay is the main provider; the Pine Labs code (`lib/pine.js`) is kept as an optional fallback and is used only if Razorpay is not configured.
 
-1. The browser sends only a pack id. The server picks the price (`PACKS` in `lib/billing.js`, **placeholder prices**) and creates a Pine Labs hosted checkout.
-2. The customer pays on Pine Labs' page and is sent back to `/api/billing/return`.
-3. That request is **not trusted**. The server finds its own order from the order id, then asks Pine Labs directly (`GET /pay/v1/orders/reference/{ref}`) and credits only if the status is `PROCESSED` and the amount matches. Credits are added at most once per order. `POST /api/billing/reconcile` covers people who closed the tab before being sent back.
-4. A failed AI answer gives the credit back.
+1. The browser sends only a pack id. The server picks the price (`PACKS` in `lib/billing.js`, **placeholder prices: set the real ones**) and creates a Razorpay order.
+2. The browser opens Razorpay's payment window. Card and UPI details go to Razorpay, never to this site.
+3. The browser reports the result to `POST /api/billing/razorpay/verify`. The server checks the signature against **its own stored order id**, then fetches the payment from Razorpay and credits only if it is **captured, for this order, for exactly the amount asked**. Only the order's own user can claim it. Credits are added at most once per order.
+4. `POST /api/billing/razorpay/webhook` (signed with `RAZORPAY_WEBHOOK_SECRET`) and `POST /api/billing/reconcile` credit people who closed the tab. The webhook payload is only used to find the order; the status is always fetched from Razorpay.
+5. A failed AI answer gives the credit back.
 
-Set `PINE_CLIENT_ID`, `PINE_CLIENT_SECRET` (UAT keys from the Pine Labs dashboard, Settings > API Keys), `PINE_BASE_URL` and `PUBLIC_URL`. Without the keys, buying is switched off. Default is the UAT environment; check the production address and have a real payment tested end to end before going live. Webhooks are not used yet.
+Settings: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` (see `.env.example`). In Razorpay's dashboard, add a webhook to `<your site>/api/billing/razorpay/webhook` for `payment.captured` and `order.paid`, and set payment capture to automatic.
+
+**Live-money lock:** with `rzp_live_` keys, checkout stays disabled unless `DB_PERSISTENT=1`. Set that only once the database is on permanent storage (a persistent disk or a hosted database). Otherwise a customer could pay and then lose their credits when the free Render service sleeps or redeploys.
+
+Not built: refunds (use Razorpay's dashboard), invoices or GST handling, email receipts, an admin page for orders.
 
 ## AI providers
 
