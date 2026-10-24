@@ -101,5 +101,11 @@ test('the pay page and admin page are served, and the Razorpay button script is 
   assert.match(html, /checkout\.razorpay\.com\/v1\/payment-button\.js/);
   assert.match(html, /pl_GYkDXxW4V0Z3pZ/);
   assert.match(pay.headers.get('content-security-policy'), /script-src[^;]*checkout\.razorpay\.com/);
+  // The relaxed policy is only for the pay page: Razorpay's button needs eval, nothing else does.
+  assert.match(pay.headers.get('content-security-policy'), /'unsafe-eval'/);
+  for (const strict of ['/', '/account.html', '/admin.html', '/auth.html']) {
+    const r = await fetch(base + strict);
+    assert.doesNotMatch(r.headers.get('content-security-policy'), /unsafe-eval|unsafe-inline/, strict);
+  }
   assert.strictEqual((await fetch(base + '/admin.html')).status, 200);
 });

@@ -47,8 +47,13 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'no-referrer');
   if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000');
+  // Razorpay's hosted payment button builds code from strings and injects styles, so only the pay
+  // page allows 'unsafe-eval' and inline styles (and still only for scripts from our own site and
+  // checkout.razorpay.com). Every other page keeps the strict policy.
+  const payPage = req.path === '/pay.html' || req.path === '/pay';
   res.setHeader('Content-Security-Policy',
-    "default-src 'self'; img-src 'self' data: https://*.razorpay.com; style-src 'self'; script-src 'self' https://checkout.razorpay.com; " +
+    `default-src 'self'; img-src 'self' data: https://*.razorpay.com; style-src 'self'${payPage ? " 'unsafe-inline'" : ''}; ` +
+    `script-src 'self' https://checkout.razorpay.com${payPage ? " 'unsafe-eval'" : ''}; ` +
     "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com; frame-src https://api.razorpay.com https://checkout.razorpay.com; base-uri 'none'; frame-ancestors 'none'");
   next();
 });
