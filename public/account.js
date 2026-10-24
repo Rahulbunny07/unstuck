@@ -1,0 +1,143 @@
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  function h(tag, props, ...kids) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(props || {})) {
+      if (v == null || v === false) continue;
+      if (k === 'class') el.className = v;
+      else if (k === 'text') el.textContent = v;
+      else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, v === true ? '' : v);
+    }
+    for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid.nodeType ? kid : document.createTextNode(kid));
+    return el;
+  }
+
+  async function api(path, method, body) {
+    const res = await fetch(path, { method: method || 'GET', headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+    const d = await res.json().catch(() => ({}));
+    if (res.status === 401) { location.href = '/auth.html'; throw new Error('signed out'); }
+    if (!res.ok) throw new Error(d.error || 'Something went wrong. Try again.');
+    return d;
+  }
+
+  const PROV = { anthropic: 'Anthropic', openai: 'OpenAI', groq: 'Groq', custom: 'Custom', agenticorg: 'AgenticOrg' };
+  $('provider').addEventListener('change', () => {
+    const p = $('provider').value;
+    $('customFields').hidden = p !== 'custom' && p !== 'agenticorg';
+    $('baseField').hidden = p === 'agenticorg';
+    $('kmodelLabel').textContent = p === 'agenticorg' ? 'Agent ID' : 'Model name';
+    $('kmodelHint').hidden = p !== 'agenticorg';
+    $('kmodel').placeholder = p === 'agenticorg' ? '00000000-0000-0000-0000-000000000000' : "As written in the provider's docs";
+  });
+
+  function showErr(id, msg) { const e = $(id); e.textContent = msg || ''; e.hidden = !msg; }
+
+  function renderKeys(keys) {
+    const host = $('keyList');
+    host.replaceChildren();
+    if (!keys.length) { host.append(h('p', { class: 'empty', text: 'No keys yet. Without one, new errors use the site owner\'s AI if available.' })); return; }
+    keys.forEach(k => host.append(h('div', { class: 'item' },
+      h('div', { class: 'item-main' },
+        h('b', { text: `${PROV[k.provider] || k.provider}${k.label ? ' - ' + k.label : ''}` }),
+        h('span', { class: 'meta', text: `ends in ${k.last4}${k.model ? ' - ' + k.model : ''}` }),
+        k.isDefault ? h('span', { class: 'badge confirmed', text: 'Default' }) : null),
+      h('div', { class: 'item-actions' },
+        k.isDefault ? null : h('button', { type: 'button', class: 'ghost sm', text: 'Make default', onclick: async () => renderKeys((await api(`/api/keys/${k.id}/default`, 'POST')).keys) }),
+        h('button', { type: 'button', class: 'ghost sm danger', text: 'Remove', onclick: async () => { if (confirm('Remove this key?')) renderKeys((await api(`/api/keys/${k.id}`, 'DELETE')).keys); } })))));
+  }
+
+  $('keyForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    showErr('keyErr', '');
+    const key = $('kval').value.trim();
+    if (!key) { showErr('keyErr', 'Paste your API key first.'); return; }
+    const btn = $('keyBtn');
+    btn.disabled = true; btn.textContent = 'Checking with provider...';
+    try {
+      await api('/api/keys', 'POST', { provider: $('provider').value, label: $('klabel').value, key, baseUrl: $('kbase').value, model: $('kmodel').value });
+      $('kval').value = ''; $('klabel').value = '';
+      renderKeys((await api('/api/keys')).keys);
+    } catch (err) { showErr('keyErr', err.message); }
+    finally { btn.disabled = false; btn.textContent = 'Check and save key'; }
+  });
+
+  let catalog = [];
+  let picked = null;
+
+  function renderCatalog() {
+    const host = $('catChips');
+    host.replaceChildren();
+    catalog.forEach(c => {
+      const b = h('button', { type: 'button', class: 'chip', role: 'radio', 'aria-checked': String(picked === c.id), text: c.name });
+      b.addEventListener('click', () => {
+        picked = c.id;
+        $('murl').value = c.url;
+        $('catHint').textContent = c.hint;
+        renderCatalog();
+      });
+      host.append(b);
+    });
+  }
+
+  function renderMcp(list) {
+    const host = $('mcpList');
+    host.replaceChildren();
+    if (!list.length) { host.append(h('p', { class: 'empty', text: 'No servers connected yet.' })); return; }
+    list.forEach(s => {
+      const enabled = new Set(s.enabledTools);
+      const toolsBox = h('div', { class: 'tools' });
+      s.tools.forEach(t => {
+        const cb = h('input', { type: 'checkbox', id: `t${s.id}_${t.name}` });
+        cb.checked = enabled.has(t.name);
+        cb.addEventListener('change', async () => {
+          const names = [...toolsBox.querySelectorAll('input:checked')].map(i => i.dataset.name);
+          try { await api(`/api/mcp/${s.id}/tools`, 'POST', { enabled: names }); } catch (err) { cb.checked = !cb.checked; alert(err.message); }
+        });
+        cb.dataset.name = t.name;
+        toolsBox.append(h('label', { class: 'tool', for: cb.id }, cb, h('span', {}, h('b', { text: t.name }), ' ', h('span', { class: 'tag ' + (t.readOnly ? 'ro' : 'rw'), text: t.readOnly ? 'read-only' : 'can change things' }), t.description ? h('span', { class: 'meta block', text: t.description }) : null)));
+      });
+      const msg = h('p', { class: 'form-error', role: 'alert', hidden: true });
+      host.append(h('div', { class: 'item col' },
+        h('div', { class: 'item-main' },
+          h('b', { text: s.name }),
+          h('span', { class: 'meta', text: s.server.name ? `${s.server.name} ${s.server.version || ''}`.trim() : s.url }),
+          h('span', { class: 'meta', text: `${s.tools.length} tool${s.tools.length === 1 ? '' : 's'}, ${s.enabledTools.length} on` })),
+        h('div', { class: 'item-actions' },
+          h('button', { type: 'button', class: 'ghost sm', text: 'Re-check', onclick: async () => { try { await api(`/api/mcp/${s.id}/test`, 'POST'); renderMcp((await api('/api/mcp')).servers); } catch (err) { msg.textContent = err.message; msg.hidden = false; } } }),
+          h('button', { type: 'button', class: 'ghost sm danger', text: 'Remove', onclick: async () => { if (confirm('Remove this server?')) renderMcp((await api(`/api/mcp/${s.id}`, 'DELETE')).servers); } })),
+        msg,
+        s.tools.length ? h('details', { class: 'more' }, h('summary', { text: 'Choose which tools Unstuck may use' }), toolsBox) : null));
+    });
+  }
+
+  $('mcpForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    showErr('mcpErr', '');
+    if (!picked) { showErr('mcpErr', 'Choose a server first.'); return; }
+    const url = $('murl').value.trim();
+    if (!url) { showErr('mcpErr', 'Enter the server URL.'); return; }
+    const btn = $('mcpBtn');
+    btn.disabled = true; btn.textContent = 'Connecting...';
+    try {
+      await api('/api/mcp', 'POST', { catalogId: picked, url, token: $('mtoken').value });
+      $('mtoken').value = '';
+      renderMcp((await api('/api/mcp')).servers);
+    } catch (err) { showErr('mcpErr', err.message); }
+    finally { btn.disabled = false; btn.textContent = 'Connect and check'; }
+  });
+
+  (async function init() {
+    try {
+      const me = await api('/api/me');
+      if (!me.user) { location.href = '/auth.html'; return; }
+      $('who').textContent = me.user.name ? `Hi, ${me.user.name}` : me.user.email;
+      renderKeys((await api('/api/keys')).keys);
+      catalog = (await api('/api/mcp/catalog')).catalog;
+      renderCatalog();
+      renderMcp((await api('/api/mcp')).servers);
+    } catch { /* redirected or offline */ }
+  })();
+})();

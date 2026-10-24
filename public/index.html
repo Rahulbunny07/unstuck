@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Unstuck: fix your AI-built app errors</title>
+  <meta name="description" content="Paste an error from Lovable, Replit, Bolt or Cursor. Get the likely cause with evidence, a short prompt to paste back, a way to check it, and an undo step.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f46e5'/%3E%3Cpath d='M9 17l5 5 9-12' stroke='white' stroke-width='3.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-in">
+      <a class="brand" href="/" aria-label="Unstuck home">
+        <span class="logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        Unstuck
+      </a>
+      <div class="live" id="liveStats" aria-live="polite" hidden>
+        <span class="dot" aria-hidden="true"></span>
+        <span id="liveText"></span>
+      </div>
+      <div class="navauth" id="navAuth"></div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <p class="eyebrow">For Lovable, Replit, Bolt and Cursor users</p>
+      <h1>Stop burning credits on the same bug.</h1>
+      <p class="lead">Paste your error. Get the likely cause with evidence, one short prompt to paste back into your builder, how to check it worked, and how to undo it.</p>
+    </section>
+
+    <section class="card" id="inputCard" aria-labelledby="stepTitle">
+      <div class="card-head">
+        <h2 id="stepTitle">What is breaking?</h2>
+        <button class="link" id="newBtn" type="button" hidden>Start a new problem</button>
+      </div>
+
+      <div class="field">
+        <span class="label" id="toolLabel">Where did you build it?</span>
+        <div class="chips" role="radiogroup" aria-labelledby="toolLabel" id="toolChips"></div>
+      </div>
+
+      <div class="field">
+        <span class="label" id="platLabel">Where does it run? <span class="opt">optional</span></span>
+        <div class="chips" role="radiogroup" aria-labelledby="platLabel" id="platChips"></div>
+      </div>
+
+      <div class="field">
+        <label class="label" for="errorBox">Error or log</label>
+        <textarea id="errorBox" rows="7" spellcheck="false" placeholder="Paste the error from your browser console, build log or your builder's chat."></textarea>
+        <div class="hint-row">
+          <span class="hint">Keys, tokens and emails are removed automatically before anything is analysed.</span>
+          <span class="count" id="count">0</span>
+        </div>
+      </div>
+
+      <details class="more" id="more">
+        <summary>Add config or your last prompt <span class="opt">optional, improves accuracy</span></summary>
+        <label class="label" for="ctxBox">Relevant config or code</label>
+        <textarea id="ctxBox" rows="4" spellcheck="false" placeholder="For example vercel.json, a policy, or the file named in the error."></textarea>
+        <div class="filerow">
+          <label class="ghost sm filebtn" for="ctxFile">Add files</label>
+          <input id="ctxFile" type="file" multiple accept=".json,.toml,.yaml,.yml,.js,.jsx,.ts,.tsx,.mjs,.cjs,.txt,.md,.env,.config,.sql,.html,.css,.conf,.ini,.lock">
+          <span class="hint" id="fileNote">Text files up to 60 KB each. They are read in your browser and added above; keys and tokens are removed before analysis.</span>
+        </div>
+        <label class="label" for="siteBox">Your live site address <span class="opt">we check it for you, no AI</span></label>
+        <input id="siteBox" type="url" spellcheck="false" placeholder="https://myapp.vercel.app">
+        <label class="label" for="promptBox">Your last prompt to the builder</label>
+        <textarea id="promptBox" rows="2" spellcheck="false" placeholder="What you asked the builder to do before it broke."></textarea>
+      </details>
+
+      <div class="actions">
+        <button class="primary" id="goBtn" type="button">Get fix</button>
+        <div class="samples">
+          <span class="hint">No error handy? Try a sample:</span>
+          <button class="chip small" type="button" data-sample="rls">Database permission</button>
+          <button class="chip small" type="button" data-sample="cors">CORS</button>
+          <button class="chip small" type="button" data-sample="novel">Unseen error</button>
+        </div>
+      </div>
+      <p class="form-error" id="formError" role="alert" hidden></p>
+    </section>
+
+    <section id="out" aria-live="polite"></section>
+
+    <section class="how" aria-labelledby="howTitle">
+      <h2 id="howTitle">How it works</h2>
+      <ol class="steps">
+        <li><b>Cleans your log.</b> Removes secrets and keeps only the lines that matter, so less is sent and nothing sensitive leaves.</li>
+        <li><b>Checks known fixes first.</b> If the error was solved before, you get that answer instantly with no AI call.</li>
+        <li><b>Asks the AI only when needed.</b> New errors get a cheap model first and a stronger one only if the first fix fails.</li>
+        <li><b>Learns from you.</b> Your Worked or Didn't work tap decides which fixes rise in the library.</li>
+      </ol>
+    </section>
+
+    <section class="stats" id="statsBox" aria-labelledby="statsTitle" hidden>
+      <h2 id="statsTitle">Live numbers</h2>
+      <p class="hint">Real counts from this site. Sample runs are not included.</p>
+      <div class="grid" id="statsGrid"></div>
+    </section>
+  </main>
+
+  <footer class="wrap foot">
+    <p>Curated fixes come from the Unstuck team and are labelled as such. Only fixes that users confirm get a "Worked for" badge. AI suggestions can be wrong: use your builder's version history before applying anything. Cleaned errors are sent to an AI provider. <a href="legal.html">Privacy and terms (draft)</a></p>
+  </footer>
+
+  <script src="nav.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

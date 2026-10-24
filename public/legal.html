@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy and terms (draft) - Unstuck</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f46e5'/%3E%3Cpath d='M9 17l5 5 9-12' stroke='white' stroke-width='3.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-in">
+      <a class="brand" href="/"><span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Unstuck</a>
+      <div class="navauth" id="navAuth"></div>
+    </div>
+  </header>
+  <main class="wrap prose">
+    <section class="hero small">
+      <p class="eyebrow">Draft</p>
+      <h1>Privacy and terms</h1>
+      <p class="lead">This is a plain-language draft of how Unstuck handles your data. It has not been reviewed by a lawyer and must be before paid use.</p>
+    </section>
+
+    <h2>What we receive</h2>
+    <ul>
+      <li>The error, log, config text and optional prompt or site address you submit, and the tool and platform you pick.</li>
+      <li>An anonymous ID created in your browser, your Worked or Didn't work votes, and counts of how the site is used.</li>
+      <li>If you create an account: your email, an optional name, and a hashed password. API keys and tokens you add are stored encrypted and are never shown again.</li>
+    </ul>
+
+    <h2>Secrets in what you paste</h2>
+    <p>Before analysis we automatically remove common key, token, password and email patterns. This is pattern matching and can miss unusual formats, so remove secrets yourself when you can.</p>
+
+    <h2>Who else sees it</h2>
+    <p>Cleaned text is sent to an AI provider to write an answer (currently Groq, or the provider of the API key you added). If you give a live site address, our server fetches that public page. We do not run ads or third-party trackers.</p>
+
+    <h2>What we keep</h2>
+    <ul>
+      <li>The first error line of each new problem, after cleaning, is stored with its answer so similar errors can be matched later. Do not submit anything you would not want stored this way.</li>
+      <li>Answers, votes, usage counts and daily limits.</li>
+      <li>Your account details until you ask us to delete them. Self-service deletion is not built yet. [Contact email to be added]</li>
+    </ul>
+
+    <h2>Cookies and storage</h2>
+    <p>A sign-in cookie if you have an account, and a random ID in your browser's local storage so your votes and retries are linked to you.</p>
+
+    <h2>Terms of use</h2>
+    <ul>
+      <li>Answers are suggestions and can be wrong. Use your builder's version history, back up your work, and check each step before relying on it.</li>
+      <li>The service is provided as is, with no guarantee that it is available or accurate. [Liability wording to be reviewed]</li>
+      <li>Free use is limited per person and per day. Do not try to get around the limits or use the service to attack others.</li>
+      <li>Fixes marked Curated were written by the Unstuck team. Only Worked for or Verified by badges reflect votes from real users.</li>
+    </ul>
+  </main>
+  <footer class="wrap foot"><p><a href="/">Back to Unstuck</a></p></footer>
+  <script src="nav.js"></script>
+</body>
+</html>

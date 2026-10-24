@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Account - Unstuck</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f46e5'/%3E%3Cpath d='M9 17l5 5 9-12' stroke='white' stroke-width='3.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-in">
+      <a class="brand" href="/"><span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Unstuck</a>
+      <div class="navauth" id="navAuth"></div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero small">
+      <p class="eyebrow">Account</p>
+      <h1 id="who">Your settings</h1>
+      <p class="lead">Use your own AI key so analyses run on your account, and connect the tools that help diagnose your errors.</p>
+    </section>
+
+    <section class="card" aria-labelledby="keysTitle">
+      <h2 id="keysTitle">Your API keys</h2>
+      <p class="hint">Keys are checked with the provider, then stored encrypted. They are never shown again, only the last 4 characters. The default key is used for your analyses.</p>
+      <div id="keyList" class="list"></div>
+      <form id="keyForm" class="inline-form" novalidate>
+        <div class="row3">
+          <div class="field">
+            <label class="label" for="provider">Provider</label>
+            <select id="provider"><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="groq">Groq (free tier)</option><option value="custom">Custom (OpenAI-compatible)</option><option value="agenticorg">Pine Labs AgenticOrg</option></select>
+          </div>
+          <div class="field">
+            <label class="label" for="klabel">Label <span class="opt">optional</span></label>
+            <input id="klabel" type="text" maxlength="40" placeholder="Personal">
+          </div>
+        </div>
+        <div id="customFields" hidden>
+          <div class="field" id="baseField">
+            <label class="label" for="kbase">Endpoint address</label>
+            <input id="kbase" type="url" spellcheck="false" placeholder="https://your-gateway.example.com/v1">
+            <p class="hint">The base address from your provider's docs. We add /chat/completions. Only public https addresses are allowed.</p>
+          </div>
+          <div class="field">
+            <label class="label" for="kmodel" id="kmodelLabel">Model name</label>
+            <input id="kmodel" type="text" spellcheck="false" placeholder="As written in the provider's docs">
+            <p class="hint" id="kmodelHint" hidden>The agent's ID (a long code with dashes) from your AgenticOrg dashboard or the organisers. The address is built in. Saving runs one small test task on that agent.</p>
+          </div>
+        </div>
+        <div class="field">
+          <label class="label" for="kval">API key</label>
+          <input id="kval" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key">
+        </div>
+        <button class="primary" type="submit" id="keyBtn">Check and save key</button>
+        <p class="form-error" id="keyErr" role="alert" hidden></p>
+      </form>
+    </section>
+
+    <section class="card gap" aria-labelledby="mcpTitle">
+      <h2 id="mcpTitle">MCP servers</h2>
+      <p class="hint">Connect the services your app runs on. We check the connection and list what each server can do. Only tools a server marks read-only are switched on by default, and nothing runs yet: these choices decide what Unstuck may use to gather evidence.</p>
+      <div id="mcpList" class="list"></div>
+      <form id="mcpForm" class="inline-form" novalidate>
+        <span class="label" id="catLabel">Choose a server</span>
+        <div class="chips" id="catChips" role="radiogroup" aria-labelledby="catLabel"></div>
+        <p class="hint" id="catHint"></p>
+        <div class="field">
+          <label class="label" for="murl">Server URL</label>
+          <input id="murl" type="url" spellcheck="false" placeholder="https://...">
+          <p class="hint">Check the exact URL in the provider's docs. Only https addresses on the public internet are allowed.</p>
+        </div>
+        <div class="field">
+          <label class="label" for="mtoken">Access token <span class="opt">if the server needs one</span></label>
+          <input id="mtoken" type="password" autocomplete="off" spellcheck="false">
+        </div>
+        <button class="primary" type="submit" id="mcpBtn">Connect and check</button>
+        <p class="form-error" id="mcpErr" role="alert" hidden></p>
+      </form>
+    </section>
+  </main>
+
+  <script src="nav.js"></script>
+  <script src="account.js"></script>
+</body>
+</html>
