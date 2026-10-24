@@ -13,6 +13,7 @@ const throttle = require('./lib/throttle');
 const billing = require('./lib/billing');
 const pine = require('./lib/pine');
 const razorpay = require('./lib/razorpay');
+const org = require('./lib/org');
 
 const PORT = Number(process.env.PORT) || 3000;
 const FAST_MODEL = process.env.FAST_MODEL || 'claude-haiku-5-5';
@@ -173,6 +174,26 @@ app.post('/api/fix', fixPerIp, fixPerUser, async (req, res) => {
 
     const siteView = site ? { ok: site.ok, error: site.error, facts: site.facts, findings: site.findings.map(f => f.text) } : null;
     const meta = { redactions: prep.redactions, trimmed: prep.trimmed, attempt: attemptNo, maxAttempts: MAX_ATTEMPTS, site: siteView };
+
+    // 1. The person's own team knowledge comes first: approved records, shown with their environment.
+    const teamHit = req.user && !refine ? org.match(req.user.id, matchText) : null;
+    if (teamHit) {
+      const r = teamHit.record;
+      trace.push(`Found a validated record from your team "${teamHit.teamName}" (${Math.round(teamHit.score * 100)}% similar). No AI used.`);
+      const saved = Math.ceil(matchText.length / 4) + 700;
+      const attemptId = store.logAttempt({ sessionId: b.sessionId, userId: b.userId, fixId: null, attempt: attemptNo, servedFrom: 'org', tokensSaved: saved });
+      return res.json({
+        status: 'ok', source: 'team', match: Math.round(teamHit.score * 100), attemptId, trace, ...meta,
+        fix: {
+          id: null, title: r.title, cause: r.cause, evidence: [], fix_prompt: r.resolution,
+          verify_steps: r.verification || 'Repeat the action that failed and confirm the error is gone.',
+          rollback: r.rollback || 'Revert the change using your version history.',
+          confidence: 'medium', worked: 0, failed: 0,
+          badge: { kind: 'team', label: `Validated by your team: ${teamHit.teamName}` },
+          env_note: r.environment ? `Recorded for: ${r.environment}. Check that your environment matches before applying.` : 'No environment was recorded. Check that the same cause applies before applying.',
+        },
+      });
+    }
 
     const found = store.findFix({
       signature: prep.signature,
@@ -562,6 +583,29 @@ app.post('/api/billing/razorpay/webhook', limit(300), async (req, res) => {
   const order = orderId ? billing.findByProviderOrder('razorpay', String(orderId)) : null;
   if (order) await billing.verifyAndSettle(order);
   res.json({ ok: true });
+});
+
+// ---- Team workspace: validated records shared inside one team ----
+const teamErrors = { name: 'Give the team a name (2 characters or more).', already: 'You are already in a team.', code: 'That join code does not match a team.', noteam: 'Join or create a team first.', fields: 'Fill in a title, the error text (at least 8 characters), the cause and the resolution.', owner: 'Only the team owner can do that.', missing: 'Record not found or already decided.' };
+const teamFail = (res, e) => res.status(e === 'owner' ? 403 : e === 'noteam' ? 404 : 400).json({ error: teamErrors[e] || 'Something went wrong.' });
+
+app.get('/api/team', auth.requireUser, (req, res) => res.json(org.listRecords(req.user.id) || { team: null, records: [] }));
+app.post('/api/team', auth.requireUser, limit(10, 60000, perUser), (req, res) => {
+  const r = org.createOrg(req.user.id, (req.body || {}).name);
+  r.error ? teamFail(res, r.error) : res.json(r);
+});
+app.post('/api/team/join', auth.requireUser, limit(10, 60000, perUser), (req, res) => {
+  const r = org.joinOrg(req.user.id, (req.body || {}).code);
+  r.error ? teamFail(res, r.error) : res.json(r);
+});
+app.post('/api/team/records', auth.requireUser, limit(30, 60000, perUser), (req, res) => {
+  const r = org.addRecord(req.user.id, req.body || {});
+  r.error ? teamFail(res, r.error) : res.json(r);
+});
+app.post('/api/team/records/:id/:action', auth.requireUser, limit(60, 60000, perUser), (req, res) => {
+  if (!['approve', 'reject'].includes(req.params.action)) return res.status(404).json({ error: 'Not found.' });
+  const r = org.decide(req.user.id, Number(req.params.id), req.params.action === 'approve');
+  r.error ? teamFail(res, r.error) : res.json(r);
 });
 
 // ---- Razorpay payment button: people say "I paid" with their payment id; the owner approves ----

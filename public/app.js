@@ -162,7 +162,8 @@
       Array.from({ length: d.maxAttempts }, (_, i) => h('i', { class: i < d.attempt ? 'on' : '' })));
 
     const metaBits = [];
-    if (d.source === 'library') metaBits.push(`Matched a known fix (${d.match}% similar). No AI used.`);
+    if (d.source === 'team') metaBits.push(`Matched a validated record from your team (${d.match}% similar). No AI used.`);
+    else if (d.source === 'library') metaBits.push(`Matched a known fix (${d.match}% similar). No AI used.`);
     else metaBits.push('New error: written by AI just now' + (d.tokens && d.tokens.in + d.tokens.out ? ` (${(d.tokens.in + d.tokens.out).toLocaleString()} AI tokens used).` : '.'));
     if (d.quota && d.quota.usedCredit) metaBits.push(`1 credit used, ${d.quota.credits} left.`);
     else if (d.quota) metaBits.push(`${d.quota.remaining} of ${d.quota.limit} free AI answers left today${d.quota.signedIn ? (d.quota.credits ? ` (plus ${d.quota.credits} credits)` : '') : ' (sign in for more)'}.`);
@@ -180,6 +181,7 @@
         h('p', { text: f.cause }),
         f.evidence && f.evidence.length ? h('ul', { class: 'ev' }, f.evidence.map(e => h('li', { text: e }))) : null,
         f.evidence_note ? h('p', { class: 'meta', text: f.evidence_note }) : null,
+        f.env_note ? h('div', { class: 'need', text: f.env_note }) : null,
         h('p', { class: 'conf ' + f.confidence }, 'Confidence: ', h('b', { text: f.confidence }))),
       d.source === 'ai' && (f.need_more || f.confidence === 'low') ? evidenceBox(f.need_more) : null,
       section(2, 'Paste this into your builder',

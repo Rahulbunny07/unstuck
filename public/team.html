@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Team knowledge - Unstuck</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f46e5'/%3E%3Cpath d='M9 17l5 5 9-12' stroke='white' stroke-width='3.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="nav"><div class="wrap nav-in">
+    <a class="brand" href="/"><span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Unstuck</a>
+    <div class="navauth" id="navAuth"></div>
+  </div></header>
+  <main class="wrap">
+    <section class="hero small">
+      <p class="eyebrow">For engineering teams</p>
+      <h1>Your team's validated fixes</h1>
+      <p class="lead">Record what your team confirmed while fixing a problem. When a teammate hits a matching error, Unstuck shows your team's record first, with the environment it was recorded for, and uses no AI.</p>
+    </section>
+
+    <section class="card" id="noTeam" hidden>
+      <h2>Start or join a team</h2>
+      <div class="row3">
+        <form id="createForm" novalidate>
+          <label class="label" for="teamName">Create a team</label>
+          <input id="teamName" type="text" maxlength="60" placeholder="Team or company name">
+          <button class="primary sm" type="submit">Create</button>
+        </form>
+        <form id="joinForm" novalidate>
+          <label class="label" for="joinCode">Join with a code</label>
+          <input id="joinCode" type="text" maxlength="20" placeholder="Code from your team owner" autocomplete="off">
+          <button class="ghost sm" type="submit">Join</button>
+        </form>
+      </div>
+      <p class="form-error" id="teamErr" role="alert" hidden></p>
+    </section>
+
+    <section id="hasTeam" hidden>
+      <div class="card">
+        <h2 id="teamTitle"></h2>
+        <p class="hint" id="teamMeta"></p>
+      </div>
+
+      <div class="card gap">
+        <h2>Add a validated record</h2>
+        <p class="hint">Only write what was confirmed. Records from members wait for the owner's approval before anyone else sees them.</p>
+        <form id="recForm" class="inline-form" novalidate>
+          <div class="field"><label class="label" for="rTitle">Title</label><input id="rTitle" type="text" maxlength="120" placeholder="JSON functions fail on the old SQLite build"></div>
+          <div class="field"><label class="label" for="rSig">Error text</label><textarea id="rSig" rows="3" spellcheck="false" placeholder="no such function: json_extract"></textarea></div>
+          <div class="field"><label class="label" for="rEnv">Environment it applies to <span class="opt">versions, OS, runtime</span></label><input id="rEnv" type="text" maxlength="300" placeholder="SQLite older than 3.38 without the JSON extension, Ubuntu 18.04"></div>
+          <div class="field"><label class="label" for="rCause">Confirmed cause</label><textarea id="rCause" rows="2"></textarea></div>
+          <div class="field"><label class="label" for="rRes">Resolution</label><textarea id="rRes" rows="3"></textarea></div>
+          <div class="field"><label class="label" for="rVer">How it was verified <span class="opt">optional</span></label><textarea id="rVer" rows="2"></textarea></div>
+          <div class="field"><label class="label" for="rRoll">Rollback <span class="opt">optional</span></label><textarea id="rRoll" rows="2"></textarea></div>
+          <button class="primary" type="submit">Save record</button>
+          <p class="form-error" id="recErr" role="alert" hidden></p>
+          <p class="banner" id="recOk" role="status" hidden></p>
+        </form>
+      </div>
+
+      <div class="card gap"><h2>Records</h2><div class="list" id="recList"></div></div>
+    </section>
+  </main>
+  <script src="nav.js"></script>
+  <script src="team.js"></script>
+</body>
+</html>

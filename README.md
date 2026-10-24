@@ -16,6 +16,10 @@ Needs Node 22.13 or newer (uses the built-in `node:sqlite`).
 
 Without an AI key the app still answers errors that are in the library; new errors show a clear "no AI key" message.
 
+## Team knowledge (`lib/org.js`, `/team.html`)
+
+A person can create or join one team (join code). Members add records: error text, the environment it applies to, confirmed cause, resolution, verification, rollback. The owner approves them; only approved records are used. For a signed-in team member, the first thing checked is the team's approved records (strong text match only). A hit is shown with its recorded environment and the instruction to check that the same cause applies, and uses no AI. Not built: repository or architecture search, automatic version comparison, CI verification, several teams per person, permissions beyond owner and member, audit history.
+
 ## How an answer is produced
 
 1. `lib/clean.js` removes secrets, trims the log to the useful lines, and guesses the platform.

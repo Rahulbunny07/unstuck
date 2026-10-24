@@ -13,6 +13,7 @@
   fetch('/api/me').then(r => r.json()).then(({ user }) => {
     host.replaceChildren();
     if (user) {
+      host.append(el('a', { href: '/team.html', class: 'navlink' }, 'Team'));
       host.append(el('a', { href: '/account.html', class: 'navlink' }, user.name || user.email));
       const out = el('button', { type: 'button', class: 'navlink btnlink' }, 'Sign out');
       out.addEventListener('click', async () => {

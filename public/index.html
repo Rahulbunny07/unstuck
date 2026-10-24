@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Unstuck: fix your AI-built app errors</title>
-  <meta name="description" content="Paste an error from Lovable, Replit, Bolt or Cursor. Get the likely cause with evidence, a short prompt to paste back, a way to check it, and an undo step.">
+  <meta name="description" content="Unstuck checks what your engineering team has already validated, then known fixes, and only then asks AI. Records show the environment they were confirmed for.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f46e5'/%3E%3Cpath d='M9 17l5 5 9-12' stroke='white' stroke-width='3.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -27,9 +27,9 @@
 
   <main class="wrap">
     <section class="hero">
-      <p class="eyebrow">For Lovable, Replit, Bolt and Cursor users</p>
-      <h1>Stop burning credits on the same bug.</h1>
-      <p class="lead">Paste your error. Get the likely cause with evidence, one short prompt to paste back into your builder, how to check it worked, and how to undo it.</p>
+      <p class="eyebrow">Your team's fixes, before AI</p>
+      <h1>Stop re-solving problems your team already solved.</h1>
+      <p class="lead">Unstuck checks what your team has already validated, then known fixes, and only then asks AI. Every answer says where it came from. Paste an error to try it, or <a href="/team.html">set up your team's knowledge</a>.</p>
     </section>
 
     <section class="card" id="inputCard" aria-labelledby="stepTitle">
@@ -85,6 +85,35 @@
     </section>
 
     <section id="out" aria-live="polite"></section>
+
+    <section class="how" aria-labelledby="usageTitle">
+      <h2 id="usageTitle">What it does, honestly</h2>
+      <p class="hint">Example: one engineer finds that a service fails because an older SQLite build has no JSON functions. They record the error text, the versions affected, the confirmed cause, the fix and how it was checked. When a teammate hits the same error, Unstuck shows that record first, with the environment it was recorded for, and uses no AI. Similar error text is not proof of the same cause, so you are always told to check the environment matches.</p>
+      <div class="two">
+        <div class="card">
+          <h3>Works today</h3>
+          <ul class="plain">
+            <li>Team workspace: members add records, the owner approves them, and approved records are matched first.</li>
+            <li>Shared library of 16 curated fixes, matched before any AI call.</li>
+            <li>AI fallback for new errors, labelled "not verified" until someone confirms it.</li>
+            <li>Evidence quotes checked against your pasted text; secrets removed before analysis.</li>
+            <li>Retry that remembers failed fixes, daily limits, and honest labels on every answer.</li>
+            <li>Config files, a live site check, and credits you can buy for extra AI answers.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Not built yet</h3>
+          <ul class="plain">
+            <li>Searching your repositories or architecture docs to reuse an existing implementation.</li>
+            <li>Comparing your runtime's real version against a record automatically.</li>
+            <li>Automatic checks in CI, or verification beyond a person's confirmation.</li>
+            <li>Several teams per person, fine-grained permissions, audit history, review dates.</li>
+            <li>Permanent storage: on the free host, data can reset when the service sleeps.</li>
+          </ul>
+        </div>
+      </div>
+      <p class="hint">Company knowledge search and AI debugging help already exist as products. Unstuck's bet is narrower: validated records with their environment, checked before AI is used.</p>
+    </section>
 
     <section class="how" aria-labelledby="howTitle">
       <h2 id="howTitle">How it works</h2>
