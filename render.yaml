@@ -1,34 +1,22 @@
 # Render blueprint: New > Blueprint > pick this repo. It asks for the two secrets marked sync: false.
 #
-# PAID PLAN WITH A DISK: our library, votes, accounts, credits, claims, team records and the live user
-# count all live in one SQLite file, so it sits on a persistent disk mounted at /var/data and survives
-# sleep and redeploys. (Render's free instances have no disk and wipe local files.)
-# The service name stays "unstuck", so the public address does not change.
-#
-# Keep ONE instance: the database file, daily limits and throttle each live inside one process.
+# FREE PLAN for now: data resets when the service sleeps or redeploys.
+# For permanent storage later: plan starter, a disk at /var/data, DB_PATH=/var/data/unstuck.db, DB_PERSISTENT=1.
 services:
   - type: web
     name: unstuck
     runtime: node
-    plan: starter
+    plan: free
     branch: master
     autoDeploy: true
     buildCommand: npm ci
     startCommand: npm start
     healthCheckPath: /api/health
-    disk:
-      name: unstuck-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: "22"
       - key: NODE_ENV
         value: production
-      - key: DB_PATH
-        value: /var/data/unstuck.db
-      - key: DB_PERSISTENT
-        value: "1"
       - key: ENCRYPTION_KEY
         sync: false
       - key: GROQ_API_KEY
