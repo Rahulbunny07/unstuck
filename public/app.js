@@ -348,12 +348,12 @@
       const people = s.uniqueUsers;
       // Real use first; the library size is the fallback while nobody has used it yet.
       $('liveText').textContent = people > 0
-        ? `${people} ${people === 1 ? 'person has' : 'people have'} used Unstuck`
+        ? `${people} ${people === 1 ? 'person has' : 'people have'} signed up`
         : `${s.fixesInLibrary} fixes in the library`;
       const hero = $('liveHero');
       if (hero) {
-        hero.hidden = people === 0;
-        hero.textContent = `${people} ${people === 1 ? 'person' : 'people'} used it so far · ${s.totalAnswers} ${s.totalAnswers === 1 ? 'answer' : 'answers'} given · ${s.usersWhoCompletedFlow} gave feedback`;
+        hero.hidden = people === 0 && s.totalAnswers === 0;
+        hero.textContent = `${people} signed-up ${people === 1 ? 'person' : 'people'} · ${s.totalAnswers} ${s.totalAnswers === 1 ? 'answer' : 'answers'} given`;
       }
       live.hidden = false;
 
@@ -363,7 +363,7 @@
         [s.totalAnswers, 'Answers given'],
         [s.servedFromLibrary, 'Served from library'],
         [s.workedRate == null ? '–' : s.workedRate + '%', 'Said it worked'],
-        [s.usersWhoCompletedFlow, 'People who finished'],
+        [people, 'People signed up'],
         [s.aiTokensUsed.toLocaleString(), 'AI tokens used (measured)'],
         [s.estTokensSaved.toLocaleString(), `AI tokens avoided (${s.savedBasis})`],
       ];
