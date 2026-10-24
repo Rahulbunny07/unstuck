@@ -352,7 +352,7 @@
         : `${s.fixesInLibrary} fixes in the library`;
       const hero = $('liveHero');
       if (hero) {
-        hero.hidden = people === 0 && s.totalAnswers === 0;
+        hero.hidden = false;
         hero.textContent = `${people} signed-up ${people === 1 ? 'person' : 'people'} · ${s.totalAnswers} ${s.totalAnswers === 1 ? 'answer' : 'answers'} given`;
       }
       live.hidden = false;
