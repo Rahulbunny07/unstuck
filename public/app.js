@@ -345,7 +345,16 @@
       if (!r.ok) return;
       const s = await r.json();
       const live = $('liveStats');
-      $('liveText').textContent = `${s.fixesInLibrary} fixes in the library` + (s.servedFromLibrary ? ` · ${s.servedFromLibrary} answered with no AI` : '');
+      const people = s.uniqueUsers;
+      // Real use first; the library size is the fallback while nobody has used it yet.
+      $('liveText').textContent = people > 0
+        ? `${people} ${people === 1 ? 'person has' : 'people have'} used Unstuck`
+        : `${s.fixesInLibrary} fixes in the library`;
+      const hero = $('liveHero');
+      if (hero) {
+        hero.hidden = people === 0;
+        hero.textContent = `${people} ${people === 1 ? 'person' : 'people'} used it so far · ${s.totalAnswers} ${s.totalAnswers === 1 ? 'answer' : 'answers'} given · ${s.usersWhoCompletedFlow} gave feedback`;
+      }
       live.hidden = false;
 
       const cells = [
@@ -364,4 +373,5 @@
     } catch { /* stats are optional */ }
   }
   refreshStats();
+  setInterval(refreshStats, 30000); // keeps the live count current while the page stays open
 })();

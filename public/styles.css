@@ -190,6 +190,7 @@ input:focus, select:focus { outline: none; border-color: var(--brand); box-shado
 .linkbtn { display: inline-block; text-decoration: none; margin-right: 8px; }
 .creditbox { width: 90px; display: inline-block; }
 code { font-family: var(--mono); background: var(--surface-2); padding: 1px 6px; border-radius: 6px; font-size: .92em; }
+.livecount { display: inline-block; margin-top: 14px; padding: 6px 14px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); font-size: 14px; font-weight: 600; }
 .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin: 14px 0; }
 .plain { padding-left: 18px; margin: 8px 0 0; display: grid; gap: 6px; color: var(--muted); font-size: 14px; }
 .queue { margin: 4px 0 0; padding: 10px 14px; border-radius: 10px; background: var(--warn-soft); color: var(--warn); font-size: 14px; }
