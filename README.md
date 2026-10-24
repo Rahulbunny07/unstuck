@@ -45,6 +45,15 @@ Site key: Anthropic, Groq or an AgenticOrg agent (first one configured wins). Us
 - `Worked for N people` / `Verified by N people`: real votes only. Sample runs are excluded from votes and stats.
 - `AI-generated, not verified yet`: a new answer nobody has confirmed.
 
+## Deploy on Render
+
+`render.yaml` is a blueprint: Render dashboard > New > Blueprint > pick this repo. It creates one web service with a 1 GB persistent disk at `/var/data` (the SQLite file lives there) and asks for two secrets:
+
+- `ENCRYPTION_KEY`: generate with `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` and keep a copy somewhere safe.
+- `GROQ_API_KEY`: your Groq key.
+
+Render's free instances have no persistent disk and wipe local files when they sleep, so the blueprint uses a paid instance. Keep it at one instance. After the first deploy check `/api/health`, then submit a sample error from a phone.
+
 ## Before deploying
 
 - Set `NODE_ENV=production` and a real `ENCRYPTION_KEY` (the server refuses to start without it). Keep that key safe: losing it makes stored user keys unreadable.
