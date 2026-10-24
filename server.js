@@ -10,6 +10,8 @@ const accounts = require('./lib/accounts');
 const mcp = require('./lib/mcp');
 const quota = require('./lib/quota');
 const throttle = require('./lib/throttle');
+const billing = require('./lib/billing');
+const pine = require('./lib/pine');
 
 const PORT = Number(process.env.PORT) || 3000;
 const FAST_MODEL = process.env.FAST_MODEL || 'claude-haiku-5-5';
@@ -35,7 +37,9 @@ const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '60kb' }));
-app.use('/api', auth.sameOrigin, auth.attachUser);
+// Pine Labs sends the customer back to /api/billing/return from its own site, so that one route
+// is exempt from the same-origin check. It trusts nothing in the request (see below).
+app.use('/api', (req, res, next) => (req.path === '/billing/return' ? next() : auth.sameOrigin(req, res, next)), auth.attachUser);
 
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -205,11 +209,34 @@ app.post('/api/fix', fixPerIp, fixPerUser, async (req, res) => {
     // Known-error answers above never reach this point, and people using their own key skip it.
     let ticket = null;
     let quotaInfo = null;
+    let creditSpent = false;
+    const spendRef = crypto.randomUUID();
+    // Undo what was reserved for this answer when the person ends up with nothing.
+    const giveBack = () => {
+      quota.refund(ticket);
+      if (creditSpent) { billing.refundSpend(req.user.id, spendRef); creditSpent = false; }
+    };
     if (!own && siteProvider()) {
-      const q = quota.reserve({ userKey: req.user ? 'u:' + req.user.id : 'a:' + b.userId, signedIn: Boolean(req.user), ip: req.ip });
-      if (!q.ok) return res.status(429).json({ error: quota.MESSAGES[q.reason](q.limit), quotaBlocked: q.reason });
+      const userKey = req.user ? 'u:' + req.user.id : 'a:' + b.userId;
+      let q = quota.reserve({ userKey, signedIn: Boolean(req.user), ip: req.ip });
+      // Past the free daily allowance, a signed-in person with credits pays one credit per AI answer.
+      if (!q.ok && q.reason === 'user' && req.user && billing.balance(req.user.id) > 0) {
+        const paid = quota.reserve({ userKey, signedIn: true, ip: req.ip, bypassUserLimit: true });
+        if (paid.ok && billing.spend(req.user.id, spendRef)) { q = paid; creditSpent = true; }
+        else if (paid.ok) quota.refund(paid.ticket);
+        else q = paid;
+      }
+      if (!q.ok) {
+        const extra = q.reason !== 'global' && pine.configured() ? ' You can also buy credits in Account.' : '';
+        return res.status(429).json({ error: quota.MESSAGES[q.reason](q.limit) + extra, quotaBlocked: q.reason });
+      }
       ticket = q.ticket;
-      if (q.limit != null) quotaInfo = { remaining: q.remaining, limit: q.limit, signedIn: Boolean(req.user) };
+      if (q.limit != null || creditSpent) {
+        quotaInfo = {
+          remaining: creditSpent ? 0 : q.remaining, limit: q.limit, signedIn: Boolean(req.user),
+          usedCredit: creditSpent, credits: req.user ? billing.balance(req.user.id) : 0,
+        };
+      }
     }
     // Wait for a turn under the provider's per-minute limit (the site's key only). People who
     // leave while waiting give their place and their free answer back.
@@ -218,12 +245,12 @@ app.post('/api/fix', fixPerIp, fixPerUser, async (req, res) => {
     if (!own && siteProvider()) {
       const turn = throttle.acquire();
       let waiting = true;
-      res.on('close', () => { if (waiting) { turn.cancel(); quota.refund(ticket); } });
+      res.on('close', () => { if (waiting) { turn.cancel(); giveBack(); } });
       try {
         ({ ticket: slot, waitedMs } = await turn);
       } catch (e) {
         waiting = false;
-        quota.refund(ticket);
+        giveBack();
         return res.status(503).json({
           error: `Lots of people are using Unstuck right now. Try again in about ${e.retryAfter || 30} seconds. Answers for known errors still work.`,
           busy: true, retryAfter: e.retryAfter || 30,
@@ -251,7 +278,7 @@ app.post('/api/fix', fixPerIp, fixPerUser, async (req, res) => {
         AGENT_WAIT: 'The AgenticOrg agent is waiting for approval in its own dashboard. Approve it there, then try again.',
         AGENT_BUDGET: 'The AgenticOrg agent has used up its budget.',
       }[e.code] || 'Something went wrong while analysing. Try again.';
-      quota.refund(ticket);
+      giveBack();
       throttle.release(slot);
       return res.status(503).json({ error: msg });
     }
@@ -420,6 +447,56 @@ app.delete('/api/mcp/:id', auth.requireUser, (req, res) => {
 
 app.get('/api/stats', limit(120), (req, res) => {
   res.json({ ...store.stats(), aiToday: quota.snapshot() });
+});
+
+// ---- Payments: Pine Labs hosted checkout, credits for AI answers ----
+const publicUrl = req => (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
+
+app.get('/api/billing/me', auth.requireUser, (req, res) => {
+  res.json({
+    configured: pine.configured(), testMode: pine.isTestMode(),
+    balance: billing.balance(req.user.id), packs: billing.PACKS, orders: billing.recentOrders(req.user.id),
+  });
+});
+
+app.post('/api/billing/checkout', auth.requireUser, limit(10), async (req, res) => {
+  if (!pine.configured()) return res.status(503).json({ error: 'Payments are not set up yet.' });
+  const pack = billing.PACKS.find(p => p.id === (req.body || {}).packId); // the price comes from here, not from the browser
+  if (!pack) return res.status(400).json({ error: 'Pick a pack.' });
+  const order = billing.createOrder(req.user.id, pack);
+  try {
+    const c = await pine.createCheckout({
+      reference: order.merchant_ref, paise: pack.paise, email: req.user.email,
+      customerId: 'u' + req.user.id, callbackUrl: `${publicUrl(req)}/api/billing/return`,
+    });
+    const url = pine.safeCheckoutUrl(c.redirectUrl);
+    if (!url) { billing.setStatus(order.id, 'FAILED'); return res.status(502).json({ error: 'Pine Labs returned a checkout address we do not trust, so nothing was charged.' }); }
+    billing.setPineOrder(order.id, c.orderId);
+    res.json({ url });
+  } catch (e) {
+    console.error('Pine Labs checkout failed:', e.code, e.status || '', e.message);
+    billing.setStatus(order.id, 'FAILED');
+    res.status(502).json({ error: e.code === 'PINE_AUTH' ? 'Payments are misconfigured. Nothing was charged.' : 'Could not start the payment. Nothing was charged. Try again.' });
+  }
+});
+
+// Pine Labs sends the customer back here. Whatever arrives in the request is only used to find
+// our own order. Whether it was paid is decided by asking Pine Labs directly, so a forged or
+// edited return link cannot add credits. It works without a sign-in cookie on purpose: the order
+// already knows which user it belongs to.
+app.all('/api/billing/return', limit(60), express.urlencoded({ extended: false, limit: '10kb' }), async (req, res) => {
+  const p = { ...req.query, ...(req.body || {}) };
+  const order = p.order_id ? billing.findByPineOrderId(String(p.order_id).slice(0, 120)) : null;
+  if (!order) return res.redirect(303, '/account.html?payment=unknown');
+  const outcome = await billing.verifyAndSettle(order);
+  res.redirect(303, `/account.html?payment=${outcome}`);
+});
+
+// For someone who paid and closed the tab before being sent back: check their open orders.
+app.post('/api/billing/reconcile', auth.requireUser, limit(20), async (req, res) => {
+  const results = [];
+  for (const o of billing.openOrdersFor(req.user.id)) results.push(await billing.verifyAndSettle(o));
+  res.json({ checked: results.length, credited: results.filter(r => r === 'success').length, balance: billing.balance(req.user.id) });
 });
 
 // How busy the AI line is right now, so the page can tell waiting people what to expect.

@@ -164,7 +164,8 @@
     const metaBits = [];
     if (d.source === 'library') metaBits.push(`Matched a known fix (${d.match}% similar). No AI used.`);
     else metaBits.push('New error: written by AI just now' + (d.tokens && d.tokens.in + d.tokens.out ? ` (${(d.tokens.in + d.tokens.out).toLocaleString()} AI tokens used).` : '.'));
-    if (d.quota) metaBits.push(`${d.quota.remaining} of ${d.quota.limit} free AI answers left today${d.quota.signedIn ? '' : ' (sign in for more)'}.`);
+    if (d.quota && d.quota.usedCredit) metaBits.push(`1 credit used, ${d.quota.credits} left.`);
+    else if (d.quota) metaBits.push(`${d.quota.remaining} of ${d.quota.limit} free AI answers left today${d.quota.signedIn ? (d.quota.credits ? ` (plus ${d.quota.credits} credits)` : '') : ' (sign in for more)'}.`);
     if (d.redactions) metaBits.push(`${d.redactions} secret${d.redactions === 1 ? '' : 's'} removed.`);
     if (d.trimmed) metaBits.push('Long log shortened to the useful lines.');
 

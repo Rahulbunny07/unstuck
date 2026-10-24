@@ -22,7 +22,21 @@
       <p class="lead">Use your own AI key so analyses run on your account, and connect the tools that help diagnose your errors.</p>
     </section>
 
-    <section class="card" aria-labelledby="keysTitle">
+    <section class="card" id="creditsCard" aria-labelledby="creditsTitle">
+      <h2 id="creditsTitle">Credits</h2>
+      <p class="hint" id="creditsHint">Each AI answer beyond your free daily answers uses one credit. Answers for known errors are always free, and so is anything you run on your own API key.</p>
+      <p class="banner" id="payBanner" role="status" hidden></p>
+      <div class="balance"><span id="balanceNum">0</span><span class="meta">credits left</span></div>
+      <p class="hint test" id="testNote" hidden>Test mode: payments use Pine Labs' test environment and no real money moves.</p>
+      <div class="packs" id="packList"></div>
+      <p class="form-error" id="buyErr" role="alert" hidden></p>
+      <details class="more" id="historyBox" hidden>
+        <summary>Recent purchases</summary>
+        <div class="list" id="orderList"></div>
+      </details>
+    </section>
+
+    <section class="card gap" aria-labelledby="keysTitle">
       <h2 id="keysTitle">Your API keys</h2>
       <p class="hint">Keys are checked with the provider, then stored encrypted. They are never shown again, only the last 4 characters. The default key is used for your analyses.</p>
       <div id="keyList" class="list"></div>

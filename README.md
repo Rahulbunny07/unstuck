@@ -8,7 +8,7 @@ Paste an error from an AI builder (Lovable, Replit, Bolt, Cursor). Get the likel
 npm install
 copy .env.example .env   # then add GROQ_API_KEY (or ANTHROPIC_API_KEY)
 npm start                # http://localhost:3000  (npm run dev restarts on changes)
-npm test                 # 46 tests, no network or real AI needed
+npm test                 # 54 tests, no network or real AI needed
 npm run eval             # real-AI check, see "Measuring quality"
 ```
 
@@ -30,6 +30,17 @@ Without an AI key the app still answers errors that are in the library; new erro
 - Daily AI answers per person, per network and for the whole site (UTC day). Library answers and people using their own key are not counted.
 - A per-minute token throttle: extra requests wait in line (30 s cap), then get a retry time.
 - Defaults fit a free Groq key. Raise them for a paid key. All settings are in `.env.example`.
+
+## Payments (Pine Labs, test mode)
+
+Signed-in users can buy credits; one credit pays for one AI answer after the free daily allowance (`lib/billing.js`, `lib/pine.js`, routes under `/api/billing`).
+
+1. The browser sends only a pack id. The server picks the price (`PACKS` in `lib/billing.js`, **placeholder prices**) and creates a Pine Labs hosted checkout.
+2. The customer pays on Pine Labs' page and is sent back to `/api/billing/return`.
+3. That request is **not trusted**. The server finds its own order from the order id, then asks Pine Labs directly (`GET /pay/v1/orders/reference/{ref}`) and credits only if the status is `PROCESSED` and the amount matches. Credits are added at most once per order. `POST /api/billing/reconcile` covers people who closed the tab before being sent back.
+4. A failed AI answer gives the credit back.
+
+Set `PINE_CLIENT_ID`, `PINE_CLIENT_SECRET` (UAT keys from the Pine Labs dashboard, Settings > API Keys), `PINE_BASE_URL` and `PUBLIC_URL`. Without the keys, buying is switched off. Default is the UAT environment; check the production address and have a real payment tested end to end before going live. Webhooks are not used yet.
 
 ## AI providers
 

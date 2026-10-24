@@ -129,11 +129,60 @@
     finally { btn.disabled = false; btn.textContent = 'Connect and check'; }
   });
 
+  const money = paise => '₹' + (paise / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+  const STATUS = { PAID: 'Paid', PENDING: 'Waiting for payment', CREATED: 'Started', FAILED: 'Failed', CANCELLED: 'Cancelled', MISMATCH: 'Needs review' };
+
+  function renderBilling(b) {
+    $('balanceNum').textContent = b.balance;
+    $('testNote').hidden = !(b.configured && b.testMode);
+    const list = $('packList');
+    list.replaceChildren();
+    if (!b.configured) {
+      list.append(h('p', { class: 'empty', text: 'Buying credits is not switched on yet.' }));
+    } else {
+      b.packs.forEach(p => list.append(h('div', { class: 'pack' },
+        h('b', { text: p.label }),
+        h('span', { class: 'meta', text: money(p.paise) }),
+        h('button', { type: 'button', class: 'primary sm', text: 'Buy', onclick: e => buy(p.id, e.currentTarget) }))));
+    }
+    $('historyBox').hidden = !b.orders.length;
+    $('orderList').replaceChildren(...b.orders.map(o => h('div', { class: 'item' },
+      h('div', { class: 'item-main' }, h('b', { text: `${o.credits} credits` }), h('span', { class: 'meta', text: money(o.amount_paise) }), h('span', { class: 'meta', text: o.created_at })),
+      h('span', { class: 'badge ' + (o.status === 'PAID' ? 'confirmed' : o.status === 'PENDING' || o.status === 'CREATED' ? 'unverified' : 'curated'), text: STATUS[o.status] || o.status }))));
+  }
+
+  async function buy(packId, btn) {
+    showErr('buyErr', '');
+    btn.disabled = true; btn.textContent = 'Starting...';
+    try {
+      const { url } = await api('/api/billing/checkout', 'POST', { packId });
+      location.href = url;
+    } catch (err) { showErr('buyErr', err.message); btn.disabled = false; btn.textContent = 'Buy'; }
+  }
+
+  async function initBilling() {
+    const banner = $('payBanner');
+    const result = new URLSearchParams(location.search).get('payment');
+    const say = {
+      success: 'Payment received. Your credits are added.',
+      pending: 'Your payment is still being confirmed. This page will update, or check again in a minute.',
+      failed: 'The payment did not go through, and nothing was charged. You can try again.',
+      unknown: 'We could not match that payment to an order. If money left your account, contact us with the time and amount.',
+    }[result];
+    if (say) { banner.textContent = say; banner.hidden = false; history.replaceState(null, '', location.pathname); }
+    try {
+      // Pick up payments finished in another tab, or before the redirect back reached us.
+      await api('/api/billing/reconcile', 'POST', {});
+    } catch { /* optional */ }
+    try { renderBilling(await api('/api/billing/me')); } catch { /* signed out or offline */ }
+  }
+
   (async function init() {
     try {
       const me = await api('/api/me');
       if (!me.user) { location.href = '/auth.html'; return; }
       $('who').textContent = me.user.name ? `Hi, ${me.user.name}` : me.user.email;
+      initBilling();
       renderKeys((await api('/api/keys')).keys);
       catalog = (await api('/api/mcp/catalog')).catalog;
       renderCatalog();

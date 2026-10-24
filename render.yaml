@@ -33,6 +33,14 @@ services:
         sync: false
       - key: GROQ_API_KEY
         sync: false
+      - key: PINE_CLIENT_ID
+        sync: false
+      - key: PINE_CLIENT_SECRET
+        sync: false
+      - key: PINE_BASE_URL
+        value: https://pluraluat.v2.pinepg.in/api
+      - key: PUBLIC_URL
+        value: https://unstuck-ns43.onrender.com
       - key: GROQ_REASONING_EFFORT
         value: low
       - key: MATCH_THRESHOLD

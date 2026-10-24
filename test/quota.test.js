@@ -51,7 +51,7 @@ const post = (userId, body = {}, cookie) => fetch(base + '/api/fix', {
 test('an anonymous person gets their daily AI answers, then a clear message, and library answers still work', async () => {
   const a = await post('user_quota_a0001');
   assert.strictEqual(a.status, 200);
-  assert.deepStrictEqual(a.body.quota, { remaining: 1, limit: 2, signedIn: false });
+  assert.deepStrictEqual(a.body.quota, { remaining: 1, limit: 2, signedIn: false, usedCredit: false, credits: 0 });
   assert.strictEqual((await post('user_quota_a0001')).body.quota.remaining, 0);
   const blocked = await post('user_quota_a0001');
   assert.strictEqual(blocked.status, 429);
