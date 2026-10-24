@@ -557,6 +557,45 @@ app.post('/api/billing/razorpay/webhook', limit(300), async (req, res) => {
   res.json({ ok: true });
 });
 
+// ---- Razorpay payment button: people say "I paid" with their payment id; the owner approves ----
+app.post('/api/billing/claim', auth.requireUser, limit(10, 60000, perUser), (req, res) => {
+  const r = billing.createClaim(req.user.id, (req.body || {}).paymentId, (req.body || {}).note);
+  if (r.error === 'invalid') return res.status(400).json({ error: 'That does not look like a Razorpay payment ID. It starts with pay_ and is on your payment receipt or email.' });
+  if (r.error === 'duplicate') return res.status(409).json({ error: 'That payment ID has already been submitted.' });
+  if (r.error === 'too_many') return res.status(429).json({ error: 'You already have 5 claims waiting. Wait for them to be checked first.' });
+  res.json({ claim: r.claim });
+});
+
+app.get('/api/billing/claims', auth.requireUser, (req, res) => {
+  res.json({ claims: billing.claimsFor(req.user.id), balance: billing.balance(req.user.id) });
+});
+
+// Admin actions need the ADMIN_TOKEN secret (at least 16 characters), sent in a header. There is no
+// admin by email: emails are not verified at sign-up, so anyone could register the owner's address.
+function adminGate(req, res, next) {
+  const want = process.env.ADMIN_TOKEN || '';
+  const got = String(req.get('x-admin-token') || '');
+  const a = Buffer.from(want);
+  const b = Buffer.from(got);
+  if (want.length < 16 || a.length !== b.length || !crypto.timingSafeEqual(a, b)) return res.status(401).json({ error: 'Admin token needed.' });
+  next();
+}
+
+app.get('/api/admin/claims', limit(30), adminGate, (req, res) => res.json({ claims: billing.pendingClaims() }));
+
+app.post('/api/admin/claims/:id/approve', limit(30), adminGate, (req, res) => {
+  const r = billing.approveClaim(Number(req.params.id), (req.body || {}).credits);
+  if (r.error === 'credits') return res.status(400).json({ error: 'Enter a whole number of credits from 1 to 10000.' });
+  if (r.error === 'missing') return res.status(404).json({ error: 'Claim not found.' });
+  if (r.error === 'decided') return res.status(409).json({ error: 'That claim was already decided.' });
+  res.json({ ok: true, balance: r.balance });
+});
+
+app.post('/api/admin/claims/:id/reject', limit(30), adminGate, (req, res) => {
+  if (!billing.rejectClaim(Number(req.params.id))) return res.status(409).json({ error: 'That claim was already decided or does not exist.' });
+  res.json({ ok: true });
+});
+
 // Pine Labs sends the customer back here. Whatever arrives in the request is only used to find
 // our own order. Whether it was paid is decided by asking Pine Labs directly, so a forged or
 // edited return link cannot add credits. It works without a sign-in cookie on purpose: the order

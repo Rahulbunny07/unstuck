@@ -140,7 +140,8 @@
     if (!b.configured) {
       list.append(h('p', { class: 'empty', text: b.reason === 'storage'
         ? 'Buying credits is paused until the site has permanent storage, so nobody pays and then loses their credits.'
-        : 'Buying credits is not switched on yet.' }));
+        : 'Pay with the Razorpay button, then tell us your payment ID. We check it and add your credits.' }),
+      h('a', { class: 'primary sm linkbtn', href: '/pay.html', text: 'Buy credits' }));
     } else {
       b.packs.forEach(p => list.append(h('div', { class: 'pack' },
         h('b', { text: p.label }),

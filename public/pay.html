@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Buy credits - Unstuck</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f46e5'/%3E%3Cpath d='M9 17l5 5 9-12' stroke='white' stroke-width='3.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-in">
+      <a class="brand" href="/"><span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Unstuck</a>
+      <div class="navauth" id="navAuth"></div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero small">
+      <p class="eyebrow">Credits</p>
+      <h1>Buy credits</h1>
+      <p class="lead">One credit pays for one AI answer after your free daily answers. Answers for known errors are always free.</p>
+    </section>
+
+    <section class="card" aria-labelledby="step1">
+      <h2 id="step1">1. Pay</h2>
+      <p class="hint">Use the same email as your Unstuck account when Razorpay asks. You pay on Razorpay's own page: your card or UPI details never reach this site.</p>
+      <div class="paybtn">
+        <form><script src="https://checkout.razorpay.com/v1/payment-button.js" data-payment_button_id="pl_GYkDXxW4V0Z3pZ" async></script></form>
+      </div>
+    </section>
+
+    <section class="card gap" aria-labelledby="step2">
+      <h2 id="step2">2. Tell us you paid</h2>
+      <p class="hint">After paying, Razorpay shows a receipt and emails you. Find the <b>payment ID</b> (it starts with <code>pay_</code>) and paste it here. We check it against Razorpay and add your credits, usually within a day.</p>
+      <div id="signedOut" hidden>
+        <p class="empty">Sign in first so we know whose credits to add.</p>
+        <p><a class="primary sm linkbtn" href="/auth.html#signup">Create account</a> <a class="ghost sm linkbtn" href="/auth.html">Sign in</a></p>
+      </div>
+      <form id="claimForm" class="inline-form" novalidate hidden>
+        <div class="field">
+          <label class="label" for="payId">Payment ID</label>
+          <input id="payId" type="text" spellcheck="false" autocomplete="off" placeholder="pay_AbC123xyz456">
+        </div>
+        <div class="field">
+          <label class="label" for="payNote">Note <span class="opt">optional</span></label>
+          <input id="payNote" type="text" maxlength="200" placeholder="For example the amount you paid">
+        </div>
+        <button class="primary" type="submit" id="claimBtn">I've paid</button>
+        <p class="form-error" id="claimErr" role="alert" hidden></p>
+        <p class="banner" id="claimOk" role="status" hidden></p>
+      </form>
+      <div class="balance" id="balanceRow" hidden><span id="balanceNum">0</span><span class="meta">credits left</span></div>
+      <div class="list" id="claimList"></div>
+    </section>
+
+    <p class="hint small-top">Credits are checked by hand against Razorpay, so a wrong or reused payment ID is rejected. Questions: see the <a href="legal.html">payments section</a>.</p>
+  </main>
+
+  <script src="nav.js"></script>
+  <script src="pay.js"></script>
+</body>
+</html>

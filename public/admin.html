@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Admin - Unstuck</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f46e5'/%3E%3Cpath d='M9 17l5 5 9-12' stroke='white' stroke-width='3.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="nav"><div class="wrap nav-in"><a class="brand" href="/">Unstuck admin</a></div></header>
+  <main class="wrap">
+    <section class="hero small">
+      <p class="eyebrow">Owner only</p>
+      <h1>Payment claims</h1>
+      <p class="lead">Check each payment ID in Razorpay's dashboard (Transactions > Payments). Approve only if it is captured and the amount matches what the credits are worth.</p>
+    </section>
+    <section class="card" id="gate">
+      <label class="label" for="tok">Admin token</label>
+      <input id="tok" type="password" autocomplete="off" spellcheck="false">
+      <p class="hint">The ADMIN_TOKEN value you set on Render. It is kept only in this tab.</p>
+      <button class="primary" id="go" type="button">Load claims</button>
+      <p class="form-error" id="err" role="alert" hidden></p>
+    </section>
+    <section class="gap" id="list"></section>
+  </main>
+  <script src="admin.js"></script>
+</body>
+</html>

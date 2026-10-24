@@ -31,9 +31,27 @@ Without an AI key the app still answers errors that are in the library; new erro
 - A per-minute token throttle: extra requests wait in line (30 s cap), then get a retry time.
 - Defaults fit a free Groq key. Raise them for a paid key. All settings are in `.env.example`.
 
-## Payments (Razorpay, real money)
+## Payments
 
-Signed-in users buy credits; one credit pays for one AI answer after the free daily allowance (`lib/billing.js`, `lib/razorpay.js`, routes under `/api/billing`). Razorpay is the main provider; the Pine Labs code (`lib/pine.js`) is kept as an optional fallback and is used only if Razorpay is not configured.
+Signed-in users buy credits; one credit pays for one AI answer after the free daily allowance.
+
+### What is switched on now: the Razorpay payment button (no keys needed)
+`/pay.html` embeds a Razorpay hosted **payment button** (`data-payment_button_id` in `public/pay.html`). The customer pays on Razorpay's page. A hosted button gives this server no automatic proof of who paid, so credits are **granted by hand**:
+
+1. The customer pastes the payment ID (`pay_...`) on `/pay.html` ("I've paid"). Claims are checked for format, are unique per payment ID, and are limited to 5 waiting per person (`/api/billing/claim`).
+2. The owner opens `/admin.html`, enters `ADMIN_TOKEN` (a secret of at least 16 characters set on Render, never stored in the repo), checks the payment in Razorpay's dashboard (captured, right amount), and approves with a number of credits (or rejects). Approval is once per claim.
+
+There is no admin by email, because emails are not verified at sign-up.
+
+### Built but switched off: automatic crediting through the Razorpay or Pine Labs APIs
+Needs API keys. With `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` set, `/api/billing/checkout` creates an order, the customer pays in Razorpay's window, and the server verifies the signature and fetches the payment before crediting (`lib/razorpay.js`, `lib/billing.js`). `/api/billing/razorpay/webhook` (signed with `RAZORPAY_WEBHOOK_SECRET`) and `/api/billing/reconcile` cover closed tabs. The Pine Labs code (`lib/pine.js`) is an optional fallback used only if Razorpay is not configured. Prices for this path are the placeholders in `PACKS` in `lib/billing.js`.
+
+**Live-money lock:** with `rzp_live_` keys the API checkout stays off unless `DB_PERSISTENT=1`, which should be set only when the database is on permanent storage.
+
+### Free hosting warning
+On Render's free plan the database file is wiped when the service sleeps or redeploys. The payment record stays safe in Razorpay, but credits granted here and claims waiting here can disappear. Re-grant from Razorpay's dashboard if that happens, or move to permanent storage.
+
+Details of the automatic path:
 
 1. The browser sends only a pack id. The server picks the price (`PACKS` in `lib/billing.js`, **placeholder prices: set the real ones**) and creates a Razorpay order.
 2. The browser opens Razorpay's payment window. Card and UPI details go to Razorpay, never to this site.
@@ -68,7 +86,7 @@ Site key: Anthropic, Groq or an AgenticOrg agent (first one configured wins). Us
 - `ENCRYPTION_KEY`: generate with `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` and keep a copy somewhere safe.
 - `GROQ_API_KEY`: your Groq key.
 
-The blueprint uses a **paid (starter) plan with a 1 GB persistent disk** at `/var/data`, because the SQLite database holds accounts, credits and payment records and must survive restarts. Render's free instances have no disk and wipe local files when they sleep or redeploy. `DB_PATH=/var/data/unstuck.db` and `DB_PERSISTENT=1` go with the disk; remove neither alone. Keep it at one instance, and back the disk up. After a deploy check `/api/health`, then submit a sample error from a phone.
+The blueprint is set to Render's FREE plan, which has no persistent disk: the database resets when the service sleeps or redeploys. For real use switch to the starter plan and add the disk described at the top of render.yaml. Keep it at one instance. After the first deploy check `/api/health`, then submit a sample error from a phone.
 
 ## Before deploying
 

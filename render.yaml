@@ -1,44 +1,39 @@
 # Render blueprint: New > Blueprint > pick this repo. It asks for the two secrets marked sync: false.
 #
-# PAID PLAN WITH A DISK: our library, votes, accounts, credits and payment records live in one SQLite
-# file, so it sits on a persistent disk mounted at /var/data. Render's free instances have no disk and
-# wipe local files when they sleep or redeploy, which is not acceptable once customers pay.
-# DB_PERSISTENT=1 below tells the app the database is on permanent storage, which unlocks live
-# (rzp_live_) payments. Only keep it if the disk block stays here.
+# FREE PLAN, NO DISK: Render's free instances have no persistent disk and wipe local files when they
+# sleep (after 15 minutes without visitors) or redeploy. Our library, votes and accounts live in one
+# SQLite file, so on this plan they RESET. Fine for trying the app, not for counting real users.
+# For real use: set plan to starter and add the disk block below, mounted at /var/data, with
+# DB_PATH=/var/data/unstuck.db.
+#
+#   disk:
+#     name: unstuck-data
+#     mountPath: /var/data
+#     sizeGB: 1
 #
 # Keep ONE instance: the database file, daily limits and throttle each live inside one process.
 services:
   - type: web
     name: unstuck
     runtime: node
-    plan: starter
+    plan: free
     branch: master
     autoDeploy: true
     buildCommand: npm ci
     startCommand: npm start
     healthCheckPath: /api/health
-    disk:
-      name: unstuck-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: "22"
       - key: NODE_ENV
         value: production
       - key: DB_PATH
-        value: /var/data/unstuck.db
-      - key: DB_PERSISTENT
-        value: "1"
+        value: /tmp/unstuck.db
       - key: ENCRYPTION_KEY
         sync: false
       - key: GROQ_API_KEY
         sync: false
-      - key: RAZORPAY_KEY_ID
-        sync: false
-      - key: RAZORPAY_KEY_SECRET
-        sync: false
-      - key: RAZORPAY_WEBHOOK_SECRET
+      - key: ADMIN_TOKEN
         sync: false
       - key: PUBLIC_URL
         value: https://unstuck-ns43.onrender.com
